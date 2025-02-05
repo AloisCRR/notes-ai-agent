@@ -1,0 +1,26 @@
+{
+	// See https://go.microsoft.com/fwlink/?LinkId=733558
+	// for the documentation about the tasks.json format
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "generate-api-client",
+			"type": "shell",
+			"command": "openapi-generator-cli",
+			"args": [
+				"generate",
+				"-i",
+				"http://127.0.0.1:8000/openapi.json",
+				"-g",
+				"typescript-fetch",
+				"-o",
+				"src/backend/fastapi"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": false
+			},
+			"problemMatcher": []
+		}
+	]
+}

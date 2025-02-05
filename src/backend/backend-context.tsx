@@ -9,6 +9,12 @@ export type Note = {
 // Define the interface for backend use cases
 export interface BackendUseCases {
 	getNotes(): Promise<Note[]>;
+	createNote(content: string): Promise<void>;
+	updateNote(id: string, content: string): Promise<void>;
+	deleteNote(id: string): Promise<void>;
+	registerUser(email: string, password: string): Promise<void>;
+	loginUser(email: string, password: string): Promise<void>;
+	chat(message: string): Promise<string>;
 }
 
 // Create the Backend context with an undefined default value.

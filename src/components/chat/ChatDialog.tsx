@@ -1,3 +1,4 @@
+import { useBackend } from "@/backend/backend-context";
 import { Button } from "@/components/ui/button";
 import {
 	ChatBubble,
@@ -11,6 +12,7 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { useMutation } from "@tanstack/react-query";
 import { PlusCircle } from "lucide-react";
 import { useRef, useState } from "react";
 
@@ -25,6 +27,12 @@ interface ChatDialogProps {
 }
 
 export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
+	const backend = useBackend();
+
+	const chatMutation = useMutation({
+		mutationFn: backend.chat,
+	});
+
 	const [messages, setMessages] = useState<ChatMessage[]>([]);
 	const [inputValue, setInputValue] = useState("");
 	const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -37,14 +45,29 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
 				content: inputValue.trim(),
 			};
 
-			// Add AI response (mock for now)
-			const aiMessage: ChatMessage = {
-				role: "assistant",
-				content: "This is a mock AI response. Real AI integration coming soon!",
-			};
-
-			setMessages([...messages, userMessage, aiMessage]);
+			// Add the user message immediately
+			setMessages((prev) => [...prev, userMessage]);
 			setInputValue("");
+
+			// Call the chat mutation
+			chatMutation.mutate(userMessage.content, {
+				onSuccess: (response) => {
+					// Add AI response when received
+					const aiMessage: ChatMessage = {
+						role: "assistant",
+						content: response,
+					};
+					setMessages((prev) => [...prev, aiMessage]);
+				},
+				onError: (error) => {
+					// Add error message
+					const errorMessage: ChatMessage = {
+						role: "assistant",
+						content: "Sorry, I encountered an error processing your message.",
+					};
+					setMessages((prev) => [...prev, errorMessage]);
+				},
+			});
 		}
 	};
 
@@ -81,6 +104,11 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
 								<ChatBubbleMessage>{message.content}</ChatBubbleMessage>
 							</ChatBubble>
 						))}
+						{chatMutation.isPending && (
+							<ChatBubble variant="received" layout="ai">
+								<ChatBubbleMessage isLoading />
+							</ChatBubble>
+						)}
 					</ChatMessageList>
 				</div>
 

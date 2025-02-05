@@ -1,3 +1,5 @@
+import { type Note, useBackend } from "@/backend/backend-context";
+import type { ResponseError } from "@/backend/fastapi/runtime";
 import { ChatDialog } from "@/components/chat/ChatDialog";
 import { ThemeToggle } from "@/components/theme-toggle";
 import {
@@ -19,57 +21,142 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { MessageSquare, Pencil, Trash2 } from "lucide-react";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import * as z from "zod";
+
+const noteSchema = z.object({
+	content: z.string().min(1, "Note cannot be empty"),
+});
+
+type NoteFormData = z.infer<typeof noteSchema>;
 
 export default function AppNotes() {
-	const [note, setNote] = useState("");
-	const [notes, setNotes] = useState<string[]>([]);
-	const [editingNote, setEditingNote] = useState<{
-		index: number;
-		content: string;
-	} | null>(null);
+	const backend = useBackend();
+
+	const {
+		data: notes,
+		isLoading: isLoadingNotes,
+		refetch: refetchNotes,
+	} = useQuery({
+		queryKey: ["notes"],
+		queryFn: () => backend.getNotes(),
+	});
+
+	const createNoteMutation = useMutation({
+		mutationFn: (content: string) => backend.createNote(content),
+		onSuccess: () => {
+			toast.success("Note created successfully");
+			refetchNotes();
+		},
+		onError: async (error: ResponseError) => {
+			const errorData: {
+				detail: string;
+			} = await error.response.json();
+
+			toast.error(`Failed to create note - ${errorData.detail}`);
+		},
+	});
+
+	const updateNoteMutation = useMutation({
+		mutationFn: (update: {
+			id: string;
+			content: string;
+		}) => backend.updateNote(update.id, update.content),
+		onSuccess: () => {
+			toast.success("Note updated successfully");
+			refetchNotes();
+		},
+		onError: () => {
+			toast.error("Failed to update note");
+		},
+	});
+
+	const deleteNoteMutation = useMutation({
+		mutationFn: (id: string) => backend.deleteNote(id),
+		onSuccess: () => {
+			toast.success("Note deleted successfully");
+			refetchNotes();
+		},
+		onError: () => {
+			toast.error("Failed to delete note");
+		},
+	});
+
+	const [editingNote, setEditingNote] = useState<string | null>(null);
+
 	const [isChatOpen, setIsChatOpen] = useState(false);
-	const [deleteIndex, setDeleteIndex] = useState<number | null>(null);
 
-	const handleAddNote = (e: React.FormEvent<HTMLFormElement>) => {
-		e.preventDefault();
-		if (note.trim() !== "") {
-			setNotes([...notes, note.trim()]);
-			setNote("");
+	const [deleteId, setDeleteId] = useState<string | null>(null);
+
+	const form = useForm<NoteFormData>({
+		resolver: zodResolver(noteSchema),
+		defaultValues: {
+			content: "",
+		},
+	});
+
+	const editForm = useForm<NoteFormData>({
+		resolver: zodResolver(noteSchema),
+	});
+
+	const handleAddNote = (data: NoteFormData) => {
+		createNoteMutation.mutate(data.content, {
+			onSuccess: () => {
+				form.reset();
+			},
+		});
+	};
+
+	const handleEditNote = (note: Note) => {
+		editForm.setValue("content", note.content);
+		setEditingNote(note.id);
+	};
+
+	const handleSaveEdit = (data: NoteFormData) => {
+		if (editingNote) {
+			updateNoteMutation.mutate(
+				{
+					id: editingNote,
+					content: data.content,
+				},
+				{
+					onSuccess: () => {
+						setEditingNote(null);
+						editForm.reset();
+					},
+				},
+			);
 		}
 	};
 
-	const handleEditNote = (index: number) => {
-		setEditingNote({ index, content: notes[index] || "" });
-	};
-
-	const handleSaveEdit = () => {
-		if (editingNote && editingNote.content.trim() !== "") {
-			const newNotes = [...notes];
-			newNotes[editingNote.index] = editingNote.content;
-			setNotes(newNotes);
-			setEditingNote(null);
-		}
-	};
-
-	const handleDeleteNote = (index: number) => {
-		const newNotes = [...notes];
-		newNotes.splice(index, 1);
-		setNotes(newNotes);
-		setDeleteIndex(null);
+	const handleDeleteNote = (id: string) => {
+		deleteNoteMutation.mutate(id, {
+			onSuccess: () => {
+				toast.success("Note deleted successfully");
+				setDeleteId(null);
+			},
+			onError: () => {
+				toast.error("Failed to delete note");
+			},
+		});
 	};
 
 	return (
 		<div className="min-h-screen bg-background p-8">
 			<div className="max-w-4xl mx-auto">
-				<div className="flex justify-between items-center mb-6">
-					<h1 className="text-3xl font-bold">Notes AI</h1>
-					<div className="flex gap-2">
+				<div className="flex justify-between items-center mb-8">
+					<h1 className="text-4xl font-bold tracking-tight">Notes AI</h1>
+					<div className="flex gap-3">
 						<Button
 							variant="outline"
 							size="icon"
 							onClick={() => setIsChatOpen(true)}
+							className="hover:bg-primary/10"
 						>
 							<MessageSquare className="h-[1.2rem] w-[1.2rem]" />
 						</Button>
@@ -79,47 +166,86 @@ export default function AppNotes() {
 
 				<ChatDialog open={isChatOpen} onOpenChange={setIsChatOpen} />
 
-				<Card className="mb-6">
+				<Card className="mb-8 border-2 border-primary/10 shadow-sm">
 					<CardContent className="pt-6">
-						<form onSubmit={handleAddNote} className="space-y-4">
+						<form
+							onSubmit={form.handleSubmit(handleAddNote)}
+							className="space-y-4"
+						>
 							<Textarea
-								value={note}
-								onChange={(e) => setNote(e.target.value)}
+								{...form.register("content")}
 								placeholder="Write your note here..."
-								className="min-h-[120px]"
-								required
+								className="min-h-[120px] text-lg resize-y"
+								disabled={createNoteMutation.isPending}
 							/>
-							<Button type="submit">Add Note</Button>
+							{form.formState.errors.content && (
+								<p className="text-sm text-destructive">
+									{form.formState.errors.content.message}
+								</p>
+							)}
+							<Button
+								type="submit"
+								disabled={createNoteMutation.isPending}
+								className="w-full sm:w-auto"
+							>
+								{createNoteMutation.isPending ? "Adding..." : "Add Note"}
+							</Button>
 						</form>
 					</CardContent>
 				</Card>
 
-				<div className="space-y-4">
-					{notes.length === 0 ? (
-						<p className="text-muted-foreground text-center py-8">
-							No notes yet. Start by adding one above!
-						</p>
+				<div className="space-y-6">
+					{isLoadingNotes ? (
+						Array.from({ length: 3 }).map((_, index) => (
+							<Card key={`skeleton-notes-${index.toString()}`}>
+								<CardContent className="pt-6">
+									<div className="h-4 bg-muted rounded animate-pulse w-3/4 mb-2" />
+									<div className="h-4 bg-muted rounded animate-pulse w-1/2" />
+								</CardContent>
+							</Card>
+						))
+					) : notes?.length === 0 ? (
+						<div className="text-center py-12 bg-muted/30 rounded-lg">
+							<p className="text-muted-foreground text-lg">
+								No notes yet. Start by adding one above!
+							</p>
+						</div>
 					) : (
-						notes.map((n, index) => (
-							<Card key={`${n}-${index.toString()}`}>
-								<CardContent className="pt-6 relative">
-									<div className="absolute right-4 top-4 flex gap-2">
+						notes?.map((note, index) => (
+							<Card
+								key={`${note}-${index.toString()}`}
+								className="hover:shadow-md transition-shadow duration-200"
+							>
+								<CardContent className="pt-6 relative group">
+									<div className="absolute right-4 top-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
 										<Button
 											variant="ghost"
 											size="icon"
-											onClick={() => handleEditNote(index)}
+											onClick={() => handleEditNote(note)}
+											disabled={
+												deleteNoteMutation.isPending ||
+												updateNoteMutation.isPending
+											}
+											className="hover:bg-primary/10"
 										>
 											<Pencil className="h-4 w-4" />
 										</Button>
 										<Button
 											variant="ghost"
 											size="icon"
-											onClick={() => setDeleteIndex(index)}
+											onClick={() => setDeleteId(note.id)}
+											disabled={
+												deleteNoteMutation.isPending ||
+												updateNoteMutation.isPending
+											}
+											className="hover:bg-destructive/10 hover:text-destructive"
 										>
 											<Trash2 className="h-4 w-4" />
 										</Button>
 									</div>
-									{n}
+									<div className="whitespace-pre-wrap text-lg pr-20">
+										{note.content}
+									</div>
 								</CardContent>
 							</Card>
 						))
@@ -128,30 +254,42 @@ export default function AppNotes() {
 
 				<Dialog
 					open={editingNote !== null}
-					onOpenChange={() => setEditingNote(null)}
+					onOpenChange={(open) => {
+						if (!open) {
+							setEditingNote(null);
+							editForm.reset();
+						}
+					}}
 				>
 					<DialogContent aria-describedby="edit-note">
 						<DialogHeader>
 							<DialogTitle>Edit Note</DialogTitle>
 						</DialogHeader>
-						<Textarea
-							value={editingNote?.content || ""}
-							onChange={(e) =>
-								setEditingNote(
-									editingNote
-										? { ...editingNote, content: e.target.value }
-										: null,
-								)
-							}
-							className="min-h-[120px]"
-						/>
-						<Button onClick={handleSaveEdit}>Save Changes</Button>
+						<form onSubmit={editForm.handleSubmit(handleSaveEdit)}>
+							<Textarea
+								{...editForm.register("content")}
+								className="min-h-[120px]"
+								disabled={updateNoteMutation.isPending}
+							/>
+							{editForm.formState.errors.content && (
+								<p className="text-sm text-destructive">
+									{editForm.formState.errors.content.message}
+								</p>
+							)}
+							<Button
+								type="submit"
+								className="mt-4"
+								disabled={updateNoteMutation.isPending}
+							>
+								{updateNoteMutation.isPending ? "Saving..." : "Save Changes"}
+							</Button>
+						</form>
 					</DialogContent>
 				</Dialog>
 
 				<AlertDialog
-					open={deleteIndex !== null}
-					onOpenChange={() => setDeleteIndex(null)}
+					open={deleteId !== null}
+					onOpenChange={() => setDeleteId(null)}
 				>
 					<AlertDialogContent>
 						<AlertDialogHeader>
@@ -164,11 +302,10 @@ export default function AppNotes() {
 						<AlertDialogFooter>
 							<AlertDialogCancel>Cancel</AlertDialogCancel>
 							<AlertDialogAction
-								onClick={() =>
-									deleteIndex !== null && handleDeleteNote(deleteIndex)
-								}
+								onClick={() => deleteId !== null && handleDeleteNote(deleteId)}
+								disabled={deleteNoteMutation.isPending}
 							>
-								Delete
+								{deleteNoteMutation.isPending ? "Deleting..." : "Delete"}
 							</AlertDialogAction>
 						</AlertDialogFooter>
 					</AlertDialogContent>

@@ -7,9 +7,10 @@ import { ThemeProvider } from "./components/theme-provider";
 // Import the generated route tree
 import { routeTree } from "./routeTree.gen";
 
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 // Import the Backend provider and sample implementation
 import { BackendProvider } from "./backend/backend-context";
-import { SupabaseBackend } from "./backend/supabase-backend";
+import { SupabaseBackend } from "./backend/supabase/supabase-backend";
 
 // Create an instance of the backend (Supabase example)
 const supabaseBackend = new SupabaseBackend();
@@ -30,12 +31,16 @@ if (!rootElement) {
 	throw new Error("Failed to find the root element");
 }
 
+const queryClient = new QueryClient();
+
 createRoot(rootElement).render(
 	<StrictMode>
-		<BackendProvider backend={supabaseBackend}>
-			<ThemeProvider defaultTheme="dark">
-				<RouterProvider router={router} />
-			</ThemeProvider>
-		</BackendProvider>
+		<QueryClientProvider client={queryClient}>
+			<BackendProvider backend={supabaseBackend}>
+				<ThemeProvider defaultTheme="dark">
+					<RouterProvider router={router} />
+				</ThemeProvider>
+			</BackendProvider>
+		</QueryClientProvider>
 	</StrictMode>,
 );
