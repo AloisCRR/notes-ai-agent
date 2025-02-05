@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { MessageSquare, Pencil, Trash2 } from "lucide-react";
+import { DateTime } from "luxon";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -245,6 +246,12 @@ export default function AppNotes() {
 									</div>
 									<div className="whitespace-pre-wrap text-lg pr-20">
 										{note.content}
+									</div>
+									<div className="mt-4 text-sm text-muted-foreground">
+										Created{" "}
+										{DateTime.fromISO(note.createdAt).toRelative({
+											locale: "en-US",
+										})}
 									</div>
 								</CardContent>
 							</Card>

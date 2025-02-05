@@ -48,11 +48,15 @@ export class SupabaseBackend implements BackendUseCases {
 	}
 
 	async getNotes(): Promise<Note[]> {
-		const { data } = await supabase.from("notes").select("*").throwOnError();
+		const { data } = await supabase
+			.from("notes")
+			.select("id, content, created_at")
+			.throwOnError();
 
 		return data.map((note) => ({
 			id: note.id.toString(),
 			content: note.content,
+			createdAt: note.created_at,
 		}));
 	}
 

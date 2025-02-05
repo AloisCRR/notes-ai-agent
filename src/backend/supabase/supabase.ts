@@ -37,27 +37,27 @@ export type Database = {
       notes: {
         Row: {
           content: string
-          created_at: string | null
+          created_at: string
           embedding: string | null
           id: number
-          updated_at: string | null
-          user_id: string | null
+          updated_at: string
+          user_id: string
         }
         Insert: {
           content: string
-          created_at?: string | null
+          created_at?: string
           embedding?: string | null
           id?: never
-          updated_at?: string | null
-          user_id?: string | null
+          updated_at?: string
+          user_id: string
         }
         Update: {
           content?: string
-          created_at?: string | null
+          created_at?: string
           embedding?: string | null
           id?: never
-          updated_at?: string | null
-          user_id?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }

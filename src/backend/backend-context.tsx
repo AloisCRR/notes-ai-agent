@@ -4,6 +4,7 @@ import { type ReactNode, createContext, useContext } from "react";
 export type Note = {
 	id: string;
 	content: string;
+	createdAt: string;
 };
 
 // Define the interface for backend use cases
