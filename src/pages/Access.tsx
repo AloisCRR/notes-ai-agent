@@ -39,7 +39,9 @@ export default function Access() {
 		},
 		onSuccess: () => {
 			toast.success("Login successful");
-			navigate({ to: "/app", replace: true });
+			const searchParams = new URLSearchParams(window.location.search);
+			const redirectTo = searchParams.get("redirect") || "/notes";
+			navigate({ to: redirectTo, replace: true });
 		},
 		onError: (error) => {
 			toast.error(error.message);
@@ -52,7 +54,9 @@ export default function Access() {
 		},
 		onSuccess: () => {
 			toast.success("Registration successful");
-			navigate({ to: "/app", replace: true });
+			const searchParams = new URLSearchParams(window.location.search);
+			const redirectTo = searchParams.get("redirect") || "/notes";
+			navigate({ to: redirectTo, replace: true });
 		},
 		onError: (error) => {
 			toast.error(error.message);
@@ -161,7 +165,9 @@ export default function Access() {
 										)}
 									</div>
 									<div className="flex justify-between items-center pt-2">
-										<Button type="submit">Login</Button>
+										<Button disabled={loginMutation.isPending} type="submit">
+											{loginMutation.isPending ? "Logging in..." : "Login"}
+										</Button>
 										{/* <Button
 											variant="link"
 											className="text-sm text-blue-400 hover:text-blue-300"
@@ -234,8 +240,12 @@ export default function Access() {
 											</p>
 										)}
 									</div>
-									<Button type="submit" className="w-full">
-										Sign Up
+									<Button
+										disabled={registerMutation.isPending}
+										type="submit"
+										className="w-full"
+									>
+										{registerMutation.isPending ? "Signing up..." : "Sign Up"}
 									</Button>
 								</form>
 							</CardContent>

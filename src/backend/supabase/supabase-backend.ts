@@ -1,23 +1,131 @@
-import { Configuration } from "@/backend/fastapi";
-import { NotesApi } from "@/backend/fastapi/apis/NotesApi";
+import type {
+	BackendUseCases,
+	ChatMessage,
+	ChatRoom,
+	Note,
+} from "@/backend/backend-context";
+import type { NotesApi } from "@/backend/fastapi/apis/NotesApi";
 import type { Database } from "@/backend/supabase/supabase";
-import { createClient } from "@supabase/supabase-js";
-import type { BackendUseCases, Note } from "../backend-context";
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { z } from "zod";
 
-const supabase = createClient<Database>(
-	import.meta.env.VITE_SUPABASE_URL,
-	import.meta.env.VITE_SUPABASE_ANON_KEY,
-);
+const PartKindEnum = z.enum([
+	"system-prompt",
+	"user-prompt",
+	"text",
+	"tool-call",
+	"tool-return",
+]);
 
-const configuration = new Configuration({
-	basePath: import.meta.env.VITE_BACKEND_URL,
+const MessagePart = z.object({
+	content: z.string().optional(),
+	dynamic_ref: z.null().optional(),
+	part_kind: PartKindEnum,
+	timestamp: z.string().datetime().optional(),
+	tool_name: z.string().optional(),
+	tool_call_id: z.string().optional(),
+	args: z.union([z.record(z.any()), z.string()]).optional(),
 });
 
-const notesApi = new NotesApi(configuration);
+const MessageKindEnum = z.enum(["request", "response"]);
+
+const MessageGroup = z.object({
+	parts: z.array(MessagePart),
+	kind: MessageKindEnum,
+	model_name: z.string().optional(),
+	timestamp: z.string().datetime().optional(),
+});
+
+const MessageSchema = z.array(MessageGroup);
 
 export class SupabaseBackend implements BackendUseCases {
+	constructor(
+		private readonly client: SupabaseClient<Database>,
+		private readonly notesApi: NotesApi,
+	) {}
+
+	async getChatRooms(): Promise<ChatRoom[]> {
+		const { data } = await this.client
+			.from("chat")
+			.select("*")
+			.order("id", { ascending: false })
+			.throwOnError();
+
+		return data.map((chat) => ({
+			id: chat.id,
+			title: chat.title,
+			created_at: chat.created_at,
+		}));
+	}
+
+	async getChatMessages(chatId: number): Promise<ChatMessage[]> {
+		const { data } = await this.client
+			.from("chat_messages")
+			.select("message")
+			.eq("chat_id", chatId)
+			.throwOnError();
+
+		return data
+			.flatMap((message) => {
+				const parsedMessage = MessageSchema.parse(
+					JSON.parse(String(message.message ?? "[]")),
+				);
+
+				return parsedMessage.map((group) => {
+					const userPromptOrText = group.parts.find(
+						(part) =>
+							part.part_kind === "user-prompt" || part.part_kind === "text",
+					);
+
+					if (!userPromptOrText?.content) {
+						return null;
+					}
+
+					const role: "user" | "assistant" =
+						group.kind === "request" ? "user" : "assistant";
+
+					return {
+						id: userPromptOrText?.timestamp ?? group.timestamp ?? "",
+						role,
+						content: userPromptOrText?.content ?? "",
+					};
+				});
+			})
+			.filter((message) => message !== null);
+	}
+
+	async createChat(title: string): Promise<ChatRoom> {
+		const session = await this.client.auth.getSession();
+
+		if (session.error) {
+			throw new Error(session.error.message);
+		}
+
+		if (!session.data.session) {
+			throw new Error("User not found");
+		}
+
+		const { data } = await this.client
+			.from("chat")
+			.insert({ title, user_id: session.data.session.user.id })
+			.select()
+			.throwOnError();
+
+		const row = data[0];
+
+		if (!row) {
+			throw new Error("Error returning chat creation data");
+		}
+
+		return {
+			id: row.id,
+			title: row.title,
+			created_at: row.created_at,
+		};
+	}
+
 	async registerUser(email: string, password: string): Promise<void> {
-		const { error } = await supabase.auth.signUp({ email, password });
+		const { error } = await this.client.auth.signUp({ email, password });
 
 		if (error) {
 			throw new Error(error.message);
@@ -25,7 +133,7 @@ export class SupabaseBackend implements BackendUseCases {
 	}
 
 	async loginUser(email: string, password: string): Promise<void> {
-		const { error } = await supabase.auth.signInWithPassword({
+		const { error } = await this.client.auth.signInWithPassword({
 			email,
 			password,
 		});
@@ -36,7 +144,7 @@ export class SupabaseBackend implements BackendUseCases {
 	}
 
 	async updateNote(id: string, content: string): Promise<void> {
-		await supabase
+		await this.client
 			.from("notes")
 			.update({ content })
 			.eq("id", Number(id))
@@ -44,11 +152,15 @@ export class SupabaseBackend implements BackendUseCases {
 	}
 
 	async deleteNote(id: string): Promise<void> {
-		await supabase.from("notes").delete().eq("id", Number(id)).throwOnError();
+		await this.client
+			.from("notes")
+			.delete()
+			.eq("id", Number(id))
+			.throwOnError();
 	}
 
 	async getNotes(): Promise<Note[]> {
-		const { data } = await supabase
+		const { data } = await this.client
 			.from("notes")
 			.select("id, content, created_at")
 			.throwOnError();
@@ -61,7 +173,7 @@ export class SupabaseBackend implements BackendUseCases {
 	}
 
 	async createNote(content: string): Promise<void> {
-		const { data, error } = await supabase.auth.getSession();
+		const { data, error } = await this.client.auth.getSession();
 
 		if (error) {
 			throw new Error(error.message);
@@ -71,7 +183,7 @@ export class SupabaseBackend implements BackendUseCases {
 			throw new Error("User not found");
 		}
 
-		await notesApi.createNoteNotesPost(
+		await this.notesApi.createNoteNotesPost(
 			{ noteCreate: { content } },
 			{
 				headers: {
@@ -82,8 +194,8 @@ export class SupabaseBackend implements BackendUseCases {
 		);
 	}
 
-	async chat(message: string): Promise<string> {
-		const { data, error } = await supabase.auth.getSession();
+	async chat(message: string, chatId: number): Promise<string> {
+		const { data, error } = await this.client.auth.getSession();
 
 		if (error) {
 			throw new Error(error.message);
@@ -93,8 +205,8 @@ export class SupabaseBackend implements BackendUseCases {
 			throw new Error("User not found");
 		}
 
-		const { response } = await notesApi.chatWithAgentAgentChatPost(
-			{ chatRequest: { query: message } },
+		const { response } = await this.notesApi.chatWithAgentAgentChatChatIdPost(
+			{ chatId, chatRequest: { query: message } },
 			{
 				headers: {
 					Authorization: `Bearer ${data.session?.access_token}`,
@@ -104,5 +216,19 @@ export class SupabaseBackend implements BackendUseCases {
 		);
 
 		return response;
+	}
+
+	async logoutUser(): Promise<void> {
+		await this.client.auth.signOut();
+	}
+
+	async isAuthenticated(): Promise<boolean> {
+		const { data, error } = await this.client.auth.getSession();
+
+		if (error) {
+			return false;
+		}
+
+		return !!data.session;
 	}
 }

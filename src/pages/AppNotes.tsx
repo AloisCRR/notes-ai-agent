@@ -23,7 +23,8 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { MessageSquare, Pencil, Trash2 } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
+import { LogOut, MessageSquare, Pencil, Trash2 } from "lucide-react";
 import { DateTime } from "luxon";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -38,6 +39,7 @@ type NoteFormData = z.infer<typeof noteSchema>;
 
 export default function AppNotes() {
 	const backend = useBackend();
+	const navigate = useNavigate();
 
 	const {
 		data: notes,
@@ -85,6 +87,14 @@ export default function AppNotes() {
 		},
 		onError: () => {
 			toast.error("Failed to delete note");
+		},
+	});
+
+	const logoutMutation = useMutation({
+		mutationFn: () => backend.logoutUser(),
+		onSuccess: () => {
+			toast.success("Logged out successfully");
+			navigate({ to: "/access" });
 		},
 	});
 
@@ -162,6 +172,16 @@ export default function AppNotes() {
 							<MessageSquare className="h-[1.2rem] w-[1.2rem]" />
 						</Button>
 						<ThemeToggle />
+						<Button
+							variant="outline"
+							size="icon"
+							onClick={() => {
+								logoutMutation.mutate();
+							}}
+							className="hover:bg-destructive/10 hover:text-destructive"
+						>
+							<LogOut className="h-[1.2rem] w-[1.2rem]" />
+						</Button>
 					</div>
 				</div>
 

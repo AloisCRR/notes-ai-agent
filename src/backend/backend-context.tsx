@@ -7,6 +7,18 @@ export type Note = {
 	createdAt: string;
 };
 
+export interface ChatRoom {
+	id: number;
+	title: string;
+	created_at: string;
+}
+
+export interface ChatMessage {
+	id: string;
+	role: "user" | "assistant";
+	content: string;
+}
+
 // Define the interface for backend use cases
 export interface BackendUseCases {
 	getNotes(): Promise<Note[]>;
@@ -15,7 +27,12 @@ export interface BackendUseCases {
 	deleteNote(id: string): Promise<void>;
 	registerUser(email: string, password: string): Promise<void>;
 	loginUser(email: string, password: string): Promise<void>;
-	chat(message: string): Promise<string>;
+	chat(message: string, chatId: number): Promise<string>;
+	logoutUser(): Promise<void>;
+	isAuthenticated(): Promise<boolean>;
+	getChatRooms(): Promise<ChatRoom[]>;
+	getChatMessages(chatId: number): Promise<ChatMessage[]>;
+	createChat(title: string): Promise<ChatRoom>;
 }
 
 // Create the Backend context with an undefined default value.

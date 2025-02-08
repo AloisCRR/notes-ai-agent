@@ -1,50 +1,93 @@
-# React + TypeScript + Vite
+# Notes AI Agent 🤖📝
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+An intelligent note-taking companion with AI-powered insights.
 
-Currently, two official plugins are available:
+## Features ✨
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **AI-Powered Insights** - Get automatic suggestions and summaries
+- **RAG and SQL Generation** - Generate insights from your notes
+- **Secure Authentication** - Powered by Supabase Auth
+- **Real-Time Chat** - Integrated AI chat interface with message history
+- **CRUD Operations** - Full note management capabilities
+- **Theme Support** - Dark/light mode with system preference
+- **Type Safety** - Full TypeScript integration with Zod validation
 
-## Expanding the ESLint configuration
+## Tech Stack 🛠️
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+**Frontend**
+- React 18 + TypeScript
+- Vite + SWC
+- TanStack Router
+- TanStack Query (React Query)
+- Shadcn UI
 
-- Configure the top-level `parserOptions` property like this:
+**[Backend](https://github.com/AloisCRR/notes-ai-agent-api)**
+- Supabase
+- FastAPI
+- PydanticAI
 
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+## Installation ⚙️
+
+1. Clone the repository:
+```bash
+git clone https://github.com/your-username/notes-ai-agent.git
+cd notes-ai-agent
 ```
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
-
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
-
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
+2. Install dependencies:
+```bash
+pnpm install
 ```
+
+3. Set up environment variables (create `.env` file):
+```env
+VITE_SUPABASE_URL=your-supabase-url
+VITE_SUPABASE_ANON_KEY=your-supabase-key
+VITE_BACKEND_URL=http://localhost:8000
+```
+
+## Running the App 🚀
+
+**Development Mode**
+```bash
+pnpm dev
+```
+
+**Production Build**
+```bash
+pnpm build && pnpm preview
+```
+
+## Project Structure 📂
+
+```tree
+src/
+├── components/       # UI components (shadcn)
+├── pages/            # Application views
+├── backend/
+│   ├── fastapi/      # Auto-generated API client
+│   └── supabase/     # Supabase integration
+├── routes/           # TanStack Router configuration
+├── lib/              # Utilities and hooks
+└── main.tsx          # Application entry point
+```
+
+## API Documentation 📚
+
+The API follows OpenAPI 3.0 specification. The client is generated using a VS Code task: `generate-api-client`. You need to have the `openapi-generator-cli` installed.
+
+This creates TypeScript types and API clients in `src/backend/fastapi`.
+
+To update Supabase types, run the `generate-supabase-types` task.
+
+## Application Showcase 🖼️
+
+### Notes AI Chat Interface
+![LLM Chat](screenshots/chat.png "Chat interface to interact with your notes")
+
+### Basic Notes UI
+![Notes](screenshots/notes.png "Basic view of your notes")
+
+# TODO
+- [ ] Markdown support
+- [ ] Mobile friendly

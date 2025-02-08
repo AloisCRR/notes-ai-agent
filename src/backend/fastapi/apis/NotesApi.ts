@@ -34,7 +34,8 @@ import {
     NoteCreateResponseToJSON,
 } from '../models/index';
 
-export interface ChatWithAgentAgentChatPostRequest {
+export interface ChatWithAgentAgentChatChatIdPostRequest {
+    chatId: number;
     chatRequest: ChatRequest;
 }
 
@@ -50,11 +51,18 @@ export class NotesApi extends runtime.BaseAPI {
     /**
      * Chat With Agent
      */
-    async chatWithAgentAgentChatPostRaw(requestParameters: ChatWithAgentAgentChatPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ChatResponse>> {
+    async chatWithAgentAgentChatChatIdPostRaw(requestParameters: ChatWithAgentAgentChatChatIdPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ChatResponse>> {
+        if (requestParameters['chatId'] == null) {
+            throw new runtime.RequiredError(
+                'chatId',
+                'Required parameter "chatId" was null or undefined when calling chatWithAgentAgentChatChatIdPost().'
+            );
+        }
+
         if (requestParameters['chatRequest'] == null) {
             throw new runtime.RequiredError(
                 'chatRequest',
-                'Required parameter "chatRequest" was null or undefined when calling chatWithAgentAgentChatPost().'
+                'Required parameter "chatRequest" was null or undefined when calling chatWithAgentAgentChatChatIdPost().'
             );
         }
 
@@ -65,7 +73,7 @@ export class NotesApi extends runtime.BaseAPI {
         headerParameters['Content-Type'] = 'application/json';
 
         const response = await this.request({
-            path: `/agent/chat`,
+            path: `/agent/chat/{chat_id}`.replace(`{${"chat_id"}}`, encodeURIComponent(String(requestParameters['chatId']))),
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
@@ -78,8 +86,8 @@ export class NotesApi extends runtime.BaseAPI {
     /**
      * Chat With Agent
      */
-    async chatWithAgentAgentChatPost(requestParameters: ChatWithAgentAgentChatPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ChatResponse> {
-        const response = await this.chatWithAgentAgentChatPostRaw(requestParameters, initOverrides);
+    async chatWithAgentAgentChatChatIdPost(requestParameters: ChatWithAgentAgentChatChatIdPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ChatResponse> {
+        const response = await this.chatWithAgentAgentChatChatIdPostRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

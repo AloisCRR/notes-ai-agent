@@ -21,6 +21,35 @@
 				"isDefault": false
 			},
 			"problemMatcher": []
+		},
+		{
+			"label": "generate-supabase-types",
+			"type": "shell",
+			"command": "pnpx",
+			"args": [
+				"supabase",
+				"gen",
+				"types",
+				"typescript",
+				"--project-id",
+				"${input:supabaseProjectId}",
+				"--schema",
+				"public",
+				">",
+				"src/backend/supabase/supabase.ts"
+			],
+			"group": {
+				"kind": "build",
+				"isDefault": false
+			},
+			"problemMatcher": []
+		}
+	],
+	"inputs": [
+		{
+			"id": "supabaseProjectId",
+			"type": "promptString",
+			"description": "Supabase Project ID"
 		}
 	]
 }

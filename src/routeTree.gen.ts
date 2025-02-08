@@ -12,7 +12,8 @@
 
 import { Route as rootRoute } from './routes/__root'
 import { Route as AccessImport } from './routes/access'
-import { Route as AppIndexImport } from './routes/app/index'
+import { Route as AppImport } from './routes/_app'
+import { Route as AppNotesImport } from './routes/_app.notes'
 
 // Create/Update Routes
 
@@ -22,16 +23,28 @@ const AccessRoute = AccessImport.update({
   getParentRoute: () => rootRoute,
 } as any)
 
-const AppIndexRoute = AppIndexImport.update({
-  id: '/app/',
-  path: '/app/',
+const AppRoute = AppImport.update({
+  id: '/_app',
   getParentRoute: () => rootRoute,
+} as any)
+
+const AppNotesRoute = AppNotesImport.update({
+  id: '/notes',
+  path: '/notes',
+  getParentRoute: () => AppRoute,
 } as any)
 
 // Populate the FileRoutesByPath interface
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/_app': {
+      id: '/_app'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof AppImport
+      parentRoute: typeof rootRoute
+    }
     '/access': {
       id: '/access'
       path: '/access'
@@ -39,51 +52,64 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccessImport
       parentRoute: typeof rootRoute
     }
-    '/app/': {
-      id: '/app/'
-      path: '/app'
-      fullPath: '/app'
-      preLoaderRoute: typeof AppIndexImport
-      parentRoute: typeof rootRoute
+    '/_app/notes': {
+      id: '/_app/notes'
+      path: '/notes'
+      fullPath: '/notes'
+      preLoaderRoute: typeof AppNotesImport
+      parentRoute: typeof AppImport
     }
   }
 }
 
 // Create and export the route tree
 
+interface AppRouteChildren {
+  AppNotesRoute: typeof AppNotesRoute
+}
+
+const AppRouteChildren: AppRouteChildren = {
+  AppNotesRoute: AppNotesRoute,
+}
+
+const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
+
 export interface FileRoutesByFullPath {
+  '': typeof AppRouteWithChildren
   '/access': typeof AccessRoute
-  '/app': typeof AppIndexRoute
+  '/notes': typeof AppNotesRoute
 }
 
 export interface FileRoutesByTo {
+  '': typeof AppRouteWithChildren
   '/access': typeof AccessRoute
-  '/app': typeof AppIndexRoute
+  '/notes': typeof AppNotesRoute
 }
 
 export interface FileRoutesById {
   __root__: typeof rootRoute
+  '/_app': typeof AppRouteWithChildren
   '/access': typeof AccessRoute
-  '/app/': typeof AppIndexRoute
+  '/_app/notes': typeof AppNotesRoute
 }
 
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/access' | '/app'
+  fullPaths: '' | '/access' | '/notes'
   fileRoutesByTo: FileRoutesByTo
-  to: '/access' | '/app'
-  id: '__root__' | '/access' | '/app/'
+  to: '' | '/access' | '/notes'
+  id: '__root__' | '/_app' | '/access' | '/_app/notes'
   fileRoutesById: FileRoutesById
 }
 
 export interface RootRouteChildren {
+  AppRoute: typeof AppRouteWithChildren
   AccessRoute: typeof AccessRoute
-  AppIndexRoute: typeof AppIndexRoute
 }
 
 const rootRouteChildren: RootRouteChildren = {
+  AppRoute: AppRouteWithChildren,
   AccessRoute: AccessRoute,
-  AppIndexRoute: AppIndexRoute,
 }
 
 export const routeTree = rootRoute
@@ -96,15 +122,22 @@ export const routeTree = rootRoute
     "__root__": {
       "filePath": "__root.tsx",
       "children": [
-        "/access",
-        "/app/"
+        "/_app",
+        "/access"
+      ]
+    },
+    "/_app": {
+      "filePath": "_app.tsx",
+      "children": [
+        "/_app/notes"
       ]
     },
     "/access": {
       "filePath": "access.tsx"
     },
-    "/app/": {
-      "filePath": "app/index.tsx"
+    "/_app/notes": {
+      "filePath": "_app.notes.tsx",
+      "parent": "/_app"
     }
   }
 }
