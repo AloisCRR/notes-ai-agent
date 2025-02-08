@@ -44,6 +44,18 @@ export class SupabaseBackend implements BackendUseCases {
 		private readonly notesApi: NotesApi,
 	) {}
 
+	async updateChatTitle(chatId: number, title: string): Promise<void> {
+		await this.client
+			.from("chat")
+			.update({ title })
+			.eq("id", chatId)
+			.throwOnError();
+	}
+
+	async deleteChat(chatId: number): Promise<void> {
+		await this.client.from("chat").delete().eq("id", chatId).throwOnError();
+	}
+
 	async getChatRooms(): Promise<ChatRoom[]> {
 		const { data } = await this.client
 			.from("chat")

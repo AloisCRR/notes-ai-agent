@@ -33,6 +33,8 @@ export interface BackendUseCases {
 	getChatRooms(): Promise<ChatRoom[]>;
 	getChatMessages(chatId: number): Promise<ChatMessage[]>;
 	createChat(title: string): Promise<ChatRoom>;
+	updateChatTitle(chatId: number, title: string): Promise<void>;
+	deleteChat(chatId: number): Promise<void>;
 }
 
 // Create the Backend context with an undefined default value.

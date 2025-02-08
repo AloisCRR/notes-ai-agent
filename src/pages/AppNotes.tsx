@@ -47,11 +47,11 @@ export default function AppNotes() {
 		refetch: refetchNotes,
 	} = useQuery({
 		queryKey: ["notes"],
-		queryFn: () => backend.getNotes(),
+		queryFn: async () => backend.getNotes(),
 	});
 
 	const createNoteMutation = useMutation({
-		mutationFn: (content: string) => backend.createNote(content),
+		mutationFn: async (content: string) => backend.createNote(content),
 		onSuccess: () => {
 			toast.success("Note created successfully");
 			refetchNotes();
@@ -66,7 +66,7 @@ export default function AppNotes() {
 	});
 
 	const updateNoteMutation = useMutation({
-		mutationFn: (update: {
+		mutationFn: async (update: {
 			id: string;
 			content: string;
 		}) => backend.updateNote(update.id, update.content),
@@ -80,7 +80,7 @@ export default function AppNotes() {
 	});
 
 	const deleteNoteMutation = useMutation({
-		mutationFn: (id: string) => backend.deleteNote(id),
+		mutationFn: async (id: string) => backend.deleteNote(id),
 		onSuccess: () => {
 			toast.success("Note deleted successfully");
 			refetchNotes();
@@ -91,7 +91,7 @@ export default function AppNotes() {
 	});
 
 	const logoutMutation = useMutation({
-		mutationFn: () => backend.logoutUser(),
+		mutationFn: async () => backend.logoutUser(),
 		onSuccess: () => {
 			toast.success("Logged out successfully");
 			navigate({ to: "/access" });

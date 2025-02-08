@@ -91,3 +91,4 @@ To update Supabase types, run the `generate-supabase-types` task.
 # TODO
 - [ ] Markdown support
 - [ ] Mobile friendly
+- [ ] Automatic chat name generation
