@@ -53,6 +53,10 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
 		if (firstChatRoom && !currentChatId) {
 			setCurrentChatId(firstChatRoom.id);
 		}
+
+		if (firstChatRoom && currentChatId) {
+			inputRef.current?.focus();
+		}
 	}, [chatRoomsQuery.data, currentChatId]);
 
 	// Query to fetch messages for current chat

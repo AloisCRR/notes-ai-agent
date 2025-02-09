@@ -75,7 +75,7 @@ export class SupabaseBackend implements BackendUseCases {
 			.from("chat_messages")
 			.select("message")
 			.eq("chat_id", chatId)
-			.order("created_at", { ascending: false })
+			.order("id", { ascending: true })
 			.throwOnError();
 
 		return data
