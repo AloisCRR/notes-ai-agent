@@ -46,12 +46,6 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
 		},
 	});
 
-	useEffect(() => {
-		if (chatRoomsQuery.data && chatRoomsQuery.data.length === 0) {
-			createChatMutation.mutate("New Chat");
-		}
-	}, [chatRoomsQuery.data]);
-
 	// Set the first chat room as default when data is loaded
 	useEffect(() => {
 		const firstChatRoom = chatRoomsQuery.data?.[0];
@@ -76,7 +70,7 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
 			chatId: number;
 		}) => {
 			const response = await backend.chat(chat.message, chat.chatId);
-			messagesQuery.refetch();
+			await messagesQuery.refetch();
 			return response;
 		},
 		onError: (error) => {
@@ -87,8 +81,8 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
 	const updateChatTitleMutation = useMutation({
 		mutationFn: async (params: { chatId: number; title: string }) =>
 			backend.updateChatTitle(params.chatId, params.title),
-		onSuccess: () => {
-			chatRoomsQuery.refetch();
+		onSuccess: async () => {
+			await chatRoomsQuery.refetch();
 		},
 		onError: (error) => {
 			toast.error(`Error updating chat title: ${error.message}`);
@@ -97,11 +91,9 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
 
 	const deleteChatMutation = useMutation({
 		mutationFn: async (chatId: number) => backend.deleteChat(chatId),
-		onSuccess: () => {
-			chatRoomsQuery.refetch();
-			// Switch to the first available chat after deletion
-			const firstChatRoom = chatRoomsQuery.data?.[0];
-			setCurrentChatId(firstChatRoom?.id ?? null);
+		onSuccess: async () => {
+			await chatRoomsQuery.refetch();
+			setCurrentChatId(null);
 		},
 		onError: (error) => {
 			toast.error(`Error deleting chat: ${error.message}`);
@@ -122,12 +114,12 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
 
 	const handleNewChat = () => {
 		createChatMutation.mutate("New Chat", {
-			onSuccess: ({ id }) => {
+			onSuccess: async ({ id }) => {
 				setInputValue("");
 
-				chatRoomsQuery.refetch();
-
 				setCurrentChatId(id);
+
+				await chatRoomsQuery.refetch();
 
 				inputRef.current?.focus();
 			},
