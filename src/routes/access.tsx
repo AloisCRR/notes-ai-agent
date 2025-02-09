@@ -7,7 +7,7 @@ export const Route = createFileRoute("/access")({
 		const isAuthenticated = await backend.isAuthenticated();
 
 		if (isAuthenticated) {
-			throw redirect({ to: "/notes", replace: true });
+			throw redirect({ to: "/", replace: true });
 		}
 	},
 });

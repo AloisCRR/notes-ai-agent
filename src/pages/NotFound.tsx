@@ -21,7 +21,7 @@ export default function NotFound() {
 				</div>
 				<div className="flex flex-col gap-2 min-[400px]:flex-row justify-center">
 					<Button
-						onClick={() => navigate({ to: "/notes" })}
+						onClick={() => navigate({ to: "/" })}
 						className="gap-2"
 						size="lg"
 					>

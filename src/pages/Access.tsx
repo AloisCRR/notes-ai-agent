@@ -40,7 +40,7 @@ export default function Access() {
 		onSuccess: () => {
 			toast.success("Login successful");
 			const searchParams = new URLSearchParams(window.location.search);
-			const redirectTo = searchParams.get("redirect") || "/notes";
+			const redirectTo = searchParams.get("redirect") || "/";
 			navigate({ to: redirectTo, replace: true });
 		},
 		onError: (error) => {
@@ -55,7 +55,7 @@ export default function Access() {
 		onSuccess: () => {
 			toast.success("Registration successful");
 			const searchParams = new URLSearchParams(window.location.search);
-			const redirectTo = searchParams.get("redirect") || "/notes";
+			const redirectTo = searchParams.get("redirect") || "/";
 			navigate({ to: redirectTo, replace: true });
 		},
 		onError: (error) => {
