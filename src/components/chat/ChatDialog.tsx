@@ -39,6 +39,19 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
 		},
 	});
 
+	const createChatMutation = useMutation({
+		mutationFn: async (title: string) => backend.createChat(title),
+		onError: (error) => {
+			toast.error(`Error creating chat: ${error.message}`);
+		},
+	});
+
+	useEffect(() => {
+		if (chatRoomsQuery.data && chatRoomsQuery.data.length === 0) {
+			createChatMutation.mutate("New Chat");
+		}
+	}, [chatRoomsQuery.data]);
+
 	// Set the first chat room as default when data is loaded
 	useEffect(() => {
 		const firstChatRoom = chatRoomsQuery.data?.[0];
@@ -55,17 +68,6 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
 			currentChatId ? backend.getChatMessages(currentChatId) : [],
 		enabled: !!currentChatId,
 		retry: false,
-	});
-
-	const createChatMutation = useMutation({
-		mutationFn: async (title: string) => backend.createChat(title),
-		onSuccess: (newChat) => {
-			setCurrentChatId(newChat.id);
-			chatRoomsQuery.refetch();
-		},
-		onError: (error) => {
-			toast.error(`Error creating chat: ${error.message}`);
-		},
 	});
 
 	const sendMessageMutation = useMutation({
@@ -119,10 +121,14 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
 	};
 
 	const handleNewChat = () => {
-		console.log("Creating new chat");
 		createChatMutation.mutate("New Chat", {
-			onSuccess: () => {
+			onSuccess: ({ id }) => {
 				setInputValue("");
+
+				chatRoomsQuery.refetch();
+
+				setCurrentChatId(id);
+
 				inputRef.current?.focus();
 			},
 		});
