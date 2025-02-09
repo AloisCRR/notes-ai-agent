@@ -153,6 +153,10 @@ export class SupabaseBackend implements BackendUseCases {
 		if (error?.code === "invalid_credentials") {
 			throw new Error("Invalid credentials or user not found");
 		}
+
+		if (error) {
+			throw new Error(error.message);
+		}
 	}
 
 	async updateNote(id: string, content: string): Promise<void> {
