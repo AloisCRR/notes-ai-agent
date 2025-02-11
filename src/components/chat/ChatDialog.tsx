@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Edit, PlusCircle, Trash } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 interface ChatDialogProps {
@@ -28,17 +28,19 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
 	const [currentChatId, setCurrentChatId] = useState<number | null>(null);
 	const [inputValue, setInputValue] = useState("");
 	const inputRef = useRef<HTMLTextAreaElement>(null);
+	// Flag to ensure only auto-create one chat.
+	const [hasAutoCreated, setHasAutoCreated] = useState(false);
 
 	// Query to fetch chat rooms
 	const chatRoomsQuery = useQuery({
 		queryKey: ["chatRooms"],
 		queryFn: async () => {
 			const rooms = await backend.getChatRooms();
-
 			return rooms;
 		},
 	});
 
+	// Mutation to create a new chat
 	const createChatMutation = useMutation({
 		mutationFn: async (title: string) => backend.createChat(title),
 		onError: (error) => {
@@ -46,18 +48,19 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
 		},
 	});
 
-	// Set the first chat room as default when data is loaded
+	// Separate effect for setting default chat
 	useEffect(() => {
-		const firstChatRoom = chatRoomsQuery.data?.[0];
-
-		if (firstChatRoom && !currentChatId) {
-			setCurrentChatId(firstChatRoom.id);
+		if (chatRoomsQuery.data && chatRoomsQuery.data.length > 0) {
+			setCurrentChatId(chatRoomsQuery.data[0]?.id ?? null);
 		}
+	}, [chatRoomsQuery.data]);
 
-		if (firstChatRoom && currentChatId) {
+	// Separate effect for focusing the input when a chat is selected
+	useEffect(() => {
+		if (currentChatId) {
 			inputRef.current?.focus();
 		}
-	}, [chatRoomsQuery.data, currentChatId]);
+	}, [currentChatId]);
 
 	// Query to fetch messages for current chat
 	const messagesQuery = useQuery({
@@ -68,11 +71,9 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
 		retry: false,
 	});
 
+	// Mutation to send a message
 	const sendMessageMutation = useMutation({
-		mutationFn: async (chat: {
-			message: string;
-			chatId: number;
-		}) => {
+		mutationFn: async (chat: { message: string; chatId: number }) => {
 			const response = await backend.chat(chat.message, chat.chatId);
 			await messagesQuery.refetch();
 			return response;
@@ -82,6 +83,7 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
 		},
 	});
 
+	// Mutation to update a chat's title
 	const updateChatTitleMutation = useMutation({
 		mutationFn: async (params: { chatId: number; title: string }) =>
 			backend.updateChatTitle(params.chatId, params.title),
@@ -93,18 +95,19 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
 		},
 	});
 
+	// Mutation to delete a chat
 	const deleteChatMutation = useMutation({
 		mutationFn: async (chatId: number) => backend.deleteChat(chatId),
 		onSuccess: async () => {
 			await chatRoomsQuery.refetch();
-			setCurrentChatId(null);
 		},
 		onError: (error) => {
 			toast.error(`Error deleting chat: ${error.message}`);
 		},
 	});
 
-	const handleSendMessage = async () => {
+	// Memoized handler for sending messages
+	const handleSendMessage = useCallback(async () => {
 		if (!inputValue.trim() || !currentChatId) return;
 
 		const messageContent = inputValue.trim();
@@ -114,21 +117,51 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
 			message: messageContent,
 			chatId: currentChatId,
 		});
-	};
+	}, [inputValue, currentChatId, sendMessageMutation]);
 
-	const handleNewChat = () => {
-		createChatMutation.mutate("New Chat", {
-			onSuccess: async ({ id }) => {
-				setInputValue("");
+	// Memoized handler for editing chat title
+	const handleEditChatTitle = useCallback(
+		(chat: { id: number; title: string }) => {
+			const newTitle = prompt("Enter new chat title:", chat.title);
+			if (newTitle && newTitle !== chat.title) {
+				updateChatTitleMutation.mutate({ chatId: chat.id, title: newTitle });
+			}
+		},
+		[updateChatTitleMutation],
+	);
 
-				setCurrentChatId(id);
+	// Memoized handler for deleting a chat
+	const handleDeleteChat = useCallback(
+		(chatId: number) => {
+			if (confirm("Are you sure you want to delete this chat?")) {
+				deleteChatMutation.mutate(chatId);
+			}
+		},
+		[deleteChatMutation],
+	);
 
-				await chatRoomsQuery.refetch();
+	// Handles new chat creation either via user
+	// action or automatically when there are no chats.
+	const handleNewChat = () => {};
 
-				inputRef.current?.focus();
-			},
-		});
-	};
+	useEffect(() => {
+		if (
+			chatRoomsQuery.data &&
+			chatRoomsQuery.data.length === 0 &&
+			!hasAutoCreated
+		) {
+			setHasAutoCreated(true);
+
+			createChatMutation.mutate("New Chat", {
+				onSuccess: async ({ id }) => {
+					setInputValue("");
+					setCurrentChatId(id);
+					await chatRoomsQuery.refetch();
+					inputRef.current?.focus();
+				},
+			});
+		}
+	}, [chatRoomsQuery.data]);
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -170,19 +203,7 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
 											variant="ghost"
 											size="sm"
 											className="absolute right-8"
-											onClick={() => {
-												const newTitle = prompt(
-													"Enter new chat title:",
-													chat.title,
-												);
-
-												if (newTitle && newTitle !== chat.title) {
-													updateChatTitleMutation.mutate({
-														chatId: chat.id,
-														title: newTitle,
-													});
-												}
-											}}
+											onClick={() => handleEditChatTitle(chat)}
 										>
 											<Edit />
 										</Button>
@@ -190,13 +211,7 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
 											variant="ghost"
 											size="sm"
 											className="absolute right-1"
-											onClick={() => {
-												if (
-													confirm("Are you sure you want to delete this chat?")
-												) {
-													deleteChatMutation.mutate(chat.id);
-												}
-											}}
+											onClick={() => handleDeleteChat(chat.id)}
 										>
 											<Trash />
 										</Button>
