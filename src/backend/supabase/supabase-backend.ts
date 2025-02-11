@@ -180,6 +180,7 @@ export class SupabaseBackend implements BackendUseCases {
 		const { data } = await this.client
 			.from("notes")
 			.select("id, content, created_at")
+			.order("created_at", { ascending: false })
 			.throwOnError();
 
 		return data.map((note) => ({
