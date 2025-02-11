@@ -269,9 +269,16 @@ export default function AppNotes() {
 									</div>
 									<div className="mt-4 text-sm text-muted-foreground">
 										Created{" "}
-										{DateTime.fromISO(note.createdAt).toRelative({
-											locale: "en-US",
-										})}
+										{DateTime.fromISO(note.createdAt)
+											.setZone("local")
+											.toFormat("MMMM dd, yyyy HH:mm")}
+										{" ("}
+										{DateTime.fromISO(note.createdAt)
+											.setZone("local")
+											.toRelative({
+												locale: "en-US",
+											})}
+										{")"}
 									</div>
 								</CardContent>
 							</Card>
