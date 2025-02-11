@@ -140,10 +140,6 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
 		[deleteChatMutation],
 	);
 
-	// Handles new chat creation either via user
-	// action or automatically when there are no chats.
-	const handleNewChat = () => {};
-
 	useEffect(() => {
 		if (
 			chatRoomsQuery.data &&
@@ -178,7 +174,16 @@ export function ChatDialog({ open, onOpenChange }: ChatDialogProps) {
 						variant="ghost"
 						size="sm"
 						className="gap-2"
-						onClick={handleNewChat}
+						onClick={() => {
+							createChatMutation.mutate("New Chat", {
+								onSuccess: async ({ id }) => {
+									setInputValue("");
+									setCurrentChatId(id);
+									await chatRoomsQuery.refetch();
+									inputRef.current?.focus();
+								},
+							});
+						}}
 					>
 						<PlusCircle className="h-4 w-4" />
 						New Chat
